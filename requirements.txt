@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+librosa
+numpy
+scikit-learn==1.7.2
+joblib
+matplotlib
+streamlit
+requests

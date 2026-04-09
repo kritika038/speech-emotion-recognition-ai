@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Emotion AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #09111f;
+            --bg-mid: #132238;
+            --panel: rgba(10, 18, 32, 0.78);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f5f7fb;
+            --text-soft: #b9c6dd;
+            --accent: #ff8f5c;
+            --accent-strong: #ff6b3d;
+            --success-bg: rgba(61, 184, 128, 0.14);
+            --success-border: rgba(61, 184, 128, 0.34);
+            --error-bg: rgba(255, 107, 61, 0.14);
+            --error-border: rgba(255, 107, 61, 0.34);
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "DM Sans", sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at top left, rgba(255, 143, 92, 0.24), transparent 28%),
+                radial-gradient(circle at right 20%, rgba(102, 184, 255, 0.18), transparent 24%),
+                linear-gradient(135deg, var(--bg-deep), var(--bg-mid) 54%, #0d1727);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 18px;
+        }
+
+        .shell {
+            width: min(1100px, 100%);
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .hero,
+        .panel {
+            border: 1px solid var(--panel-border);
+            border-radius: 28px;
+            background: var(--panel);
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            padding: 44px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -60px -90px auto;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 143, 92, 0.28), transparent 68%);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 999px;
+            padding: 10px 14px;
+            color: var(--text-soft);
+            font-size: 0.92rem;
+            letter-spacing: 0.02em;
+        }
+
+        h1 {
+            margin: 22px 0 16px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: clamp(2.6rem, 6vw, 4.8rem);
+            line-height: 0.96;
+            letter-spacing: -0.05em;
+            max-width: 9ch;
+        }
+
+        .lead {
+            margin: 0 0 28px;
+            max-width: 56ch;
+            color: var(--text-soft);
+            font-size: 1.04rem;
+            line-height: 1.7;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .feature {
+            padding: 16px 18px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .feature strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 1rem;
+        }
+
+        .feature span {
+            color: var(--text-soft);
+            font-size: 0.95rem;
+        }
+
+        .panel {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .panel h2 {
+            margin: 0 0 10px;
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 2rem;
+        }
+
+        .panel p {
+            margin: 0 0 24px;
+            color: var(--text-soft);
+            line-height: 1.7;
+        }
+
+        form {
+            display: grid;
+            gap: 14px;
+        }
+
+        .file-input {
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-soft);
+        }
+
+        .file-input input {
+            width: 100%;
+            color: var(--text-main);
+        }
+
+        button {
+            border: 0;
+            border-radius: 16px;
+            padding: 15px 18px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            box-shadow: 0 14px 30px rgba(255, 107, 61, 0.28);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        .helper {
+            font-size: 0.92rem;
+            color: var(--text-soft);
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 16px 18px;
+            border-radius: 18px;
+        }
+
+        .message strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .message.success {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+        }
+
+        .message.error {
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+        }
+
+        .footer-note {
+            margin-top: 18px;
+            color: var(--text-soft);
+            font-size: 0.88rem;
+        }
+
+        @media (max-width: 900px) {
+            .shell {
+                grid-template-columns: 1fr;
+            }
+
+            .hero,
+            .panel {
+                padding: 28px;
+            }
+
+            .feature-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="hero">
+            <div class="eyebrow">Speech ML Demo • Flask + PyTorch</div>
+            <h1>Hear the emotion inside a voice clip.</h1>
+            <p class="lead">
+                Upload a short WAV recording and this demo predicts the speaker's emotional tone using a
+                convolutional neural network trained on speech features extracted from audio.
+            </p>
+
+            <div class="feature-list">
+                <div class="feature">
+                    <strong>Fast upload flow</strong>
+                    <span>Built for quick demo use with short voice samples.</span>
+                </div>
+                <div class="feature">
+                    <strong>8 emotion classes</strong>
+                    <span>Neutral, calm, happy, sad, angry, fearful, disgust, and surprised.</span>
+                </div>
+                <div class="feature">
+                    <strong>Mel spectrogram pipeline</strong>
+                    <span>Audio is transformed into model-ready features before inference.</span>
+                </div>
+                <div class="feature">
+                    <strong>Deployment ready</strong>
+                    <span>Prepared for GitHub sharing and simple cloud hosting.</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Run a prediction</h2>
+            <p>Select a `.wav` file, submit it, and review the detected emotion instantly.</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                <label class="file-input">
+                    <input type="file" name="file" accept=".wav,audio/wav" required>
+                </label>
+                <button type="submit">Predict Emotion</button>
+                <div class="helper">Best results come from short, clear voice clips in WAV format.</div>
+            </form>
+
+            {% if prediction %}
+                <div class="message success">
+                    <strong>Prediction</strong>
+                    The model detected: {{ prediction }}
+                </div>
+            {% endif %}
+
+            {% if error %}
+                <div class="message error">
+                    <strong>Upload issue</strong>
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="footer-note">Model inference runs directly inside the Flask app for demo simplicity.</div>
+        </section>
+    </main>
+</body>
+</html>
