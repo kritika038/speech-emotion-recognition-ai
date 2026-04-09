@@ -1,44 +1,46 @@
 import os
 import numpy as np
 import librosa
-from tensorflow.keras.models import load_model
+import joblib
 
 # ==============================
 # CONFIG
 # ==============================
-MODEL_PATH = "models/cnn_model.keras"
-IMG_SIZE = 128
-EMOTIONS = ["happy", "sad", "angry", "neutral"]
+MODEL_PATH = "models/model.pkl"
 
 # ==============================
 # LOAD MODEL
 # ==============================
 if not os.path.exists(MODEL_PATH):
-    raise Exception("❌ CNN model not found. Train using train_cnn.py")
+    raise Exception("❌ Model file not found. Run training first.")
 
-model = load_model(MODEL_PATH)
+model = joblib.load(MODEL_PATH)
 
 
 # ==============================
-# FEATURE EXTRACTION
+# FEATURE EXTRACTION (MATCH TRAINING)
 # ==============================
-def extract_spectrogram(file_path):
-    audio, sr = librosa.load(file_path, duration=3, offset=0.5)
+def extract_features(file_path):
+    try:
+        audio, sr = librosa.load(file_path, duration=3, offset=0.5)
 
-    spec = librosa.feature.melspectrogram(y=audio, sr=sr)
-    spec = librosa.power_to_db(spec)
+        # MFCC (40)
+        mfcc = np.mean(librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40).T, axis=0)
 
-    spec = np.resize(spec, (IMG_SIZE, IMG_SIZE))
+        # Chroma (12)
+        stft = np.abs(librosa.stft(audio))
+        chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
 
-    # Normalize safely
-    if np.max(spec) != 0:
-        spec = spec / np.max(spec)
+        # Mel Spectrogram (~128)
+        mel = np.mean(librosa.feature.melspectrogram(y=audio, sr=sr).T, axis=0)
 
-    # Add channel + batch dimension
-    spec = spec[..., np.newaxis]
-    spec = np.expand_dims(spec, axis=0)
+        # Combine → ~180 features
+        features = np.hstack([mfcc, chroma, mel])
 
-    return spec
+        return features.reshape(1, -1)
+
+    except Exception as e:
+        raise Exception(f"Feature extraction error: {e}")
 
 
 # ==============================
@@ -46,22 +48,31 @@ def extract_spectrogram(file_path):
 # ==============================
 def predict_emotion(file_path):
     try:
-        spec = extract_spectrogram(file_path)
+        features = extract_features(file_path)
 
-        prediction = model.predict(spec)
-        predicted_class = np.argmax(prediction)
+        # Prediction (returns STRING label)
+        prediction = model.predict(features)[0]
 
-        confidence = float(np.max(prediction))
+        # Probabilities
+        probabilities = model.predict_proba(features)[0]
+
+        # Confidence
+        confidence = float(np.max(probabilities))
         confidence = round(confidence, 2)
 
         # Top 2 predictions
-        top_indices = np.argsort(prediction[0])[-2:][::-1]
+        top_indices = np.argsort(probabilities)[-2:][::-1]
         top_predictions = [
-            (EMOTIONS[i], float(prediction[0][i]))
+            (model.classes_[i], float(probabilities[i]))
             for i in top_indices
         ]
 
-        return EMOTIONS[predicted_class], confidence, prediction[0], top_predictions
+        return (
+            prediction,          # emotion (string)
+            confidence,          # confidence score
+            probabilities,       # full distribution
+            top_predictions      # top 2 predictions
+        )
 
     except Exception as e:
         return f"Prediction Error: {str(e)}"
