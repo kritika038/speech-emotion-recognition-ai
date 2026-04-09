@@ -4,3 +4,4 @@ librosa
 matplotlib
 scikit-learn
 tensorflow-cpu
+soundfile
