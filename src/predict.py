@@ -1,50 +1,67 @@
 import os
-import joblib
 import numpy as np
 import librosa
+from tensorflow.keras.models import load_model
 
-MODEL_PATH = "models/model.pkl"
+# ==============================
+# CONFIG
+# ==============================
+MODEL_PATH = "models/cnn_model.keras"
+IMG_SIZE = 128
+EMOTIONS = ["happy", "sad", "angry", "neutral"]
 
-# Load model safely
-if os.path.exists(MODEL_PATH):
-    model = joblib.load(MODEL_PATH)
-else:
-    model = None
-    print("⚠️ Model not found. Train first.")
+# ==============================
+# LOAD MODEL
+# ==============================
+if not os.path.exists(MODEL_PATH):
+    raise Exception("❌ CNN model not found. Train using train_cnn.py")
+
+model = load_model(MODEL_PATH)
 
 
-def extract_features(file_path):
-    """
-    Extract MFCC, Chroma, and Mel features
-    """
+# ==============================
+# FEATURE EXTRACTION
+# ==============================
+def extract_spectrogram(file_path):
     audio, sr = librosa.load(file_path, duration=3, offset=0.5)
 
-    mfcc = np.mean(librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40).T, axis=0)
-    chroma = np.mean(librosa.feature.chroma_stft(y=audio, sr=sr).T, axis=0)
-    mel = np.mean(librosa.feature.melspectrogram(y=audio, sr=sr).T, axis=0)
+    spec = librosa.feature.melspectrogram(y=audio, sr=sr)
+    spec = librosa.power_to_db(spec)
 
-    return np.hstack([mfcc, chroma, mel])
+    spec = np.resize(spec, (IMG_SIZE, IMG_SIZE))
+
+    # Normalize safely
+    if np.max(spec) != 0:
+        spec = spec / np.max(spec)
+
+    # Add channel + batch dimension
+    spec = spec[..., np.newaxis]
+    spec = np.expand_dims(spec, axis=0)
+
+    return spec
 
 
+# ==============================
+# PREDICTION
+# ==============================
 def predict_emotion(file_path):
-    """
-    Predict emotion + confidence
-    """
-    if model is None:
-        return {
-            "emotion": "Model not trained",
-            "confidence": 0
-        }
+    try:
+        spec = extract_spectrogram(file_path)
 
-    features = extract_features(file_path)
+        prediction = model.predict(spec)
+        predicted_class = np.argmax(prediction)
 
-    probs = model.predict_proba([features])[0]
-    idx = np.argmax(probs)
+        confidence = float(np.max(prediction))
+        confidence = round(confidence, 2)
 
-    emotion = model.classes_[idx]
-    confidence = round(probs[idx] * 100, 2)
+        # Top 2 predictions
+        top_indices = np.argsort(prediction[0])[-2:][::-1]
+        top_predictions = [
+            (EMOTIONS[i], float(prediction[0][i]))
+            for i in top_indices
+        ]
 
-    return {
-        "emotion": emotion,
-        "confidence": confidence
-    }
+        return EMOTIONS[predicted_class], confidence, prediction[0], top_predictions
+
+    except Exception as e:
+        return f"Prediction Error: {str(e)}"

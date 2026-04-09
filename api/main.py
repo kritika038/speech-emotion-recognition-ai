@@ -4,37 +4,28 @@ import os
 
 from src.predict import predict_emotion
 
-app = FastAPI(title="Speech Emotion Recognition API")
+app = FastAPI()
 
 TEMP_FILE = "temp.wav"
 
 
 @app.get("/")
 def home():
-    return {"message": "API is running 🚀"}
+    return {"message": "Speech Emotion API Running (CNN Model)"}
 
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    """
-    Upload audio file and get predicted emotion + confidence
-    """
-    try:
-        # Save uploaded file
-        with open(TEMP_FILE, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+    # Save uploaded file
+    with open(TEMP_FILE, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-        # Predict
-        result = predict_emotion(TEMP_FILE)
+    # Predict emotion
+    emotion = predict_emotion(TEMP_FILE)
 
-        # Remove temp file
-        os.remove(TEMP_FILE)
+    # Delete temp file
+    os.remove(TEMP_FILE)
 
-        return {
-            "filename": file.filename,
-            "predicted_emotion": result["emotion"],
-            "confidence": result["confidence"]
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
+    return {
+        "predicted_emotion": emotion
+    }

@@ -1,6 +1,10 @@
 import streamlit as st
-import time
 import tempfile
+import os
+import numpy as np
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
 
 from src.predict import predict_emotion
 
@@ -9,32 +13,27 @@ from src.predict import predict_emotion
 # ==============================
 st.set_page_config(
     page_title="Speech Emotion AI",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_icon="🎙️",
+    layout="centered"
 )
 
 # ==============================
-# CUSTOM CSS
+# CUSTOM CSS (UI UPGRADE 🔥)
 # ==============================
 st.markdown("""
 <style>
 .big-title {
-    text-align: center;
-    font-size: 42px;
-    font-weight: bold;
+    font-size:40px !important;
+    font-weight:700;
 }
-.sub-text {
-    text-align: center;
-    color: #9aa0a6;
-    margin-bottom: 20px;
+.subtitle {
+    font-size:18px;
+    color:gray;
 }
-.result-box {
-    background-color: #1f4f3a;
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 20px;
-    font-weight: bold;
+.box {
+    padding:15px;
+    border-radius:10px;
+    background-color:#1e293b;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -42,91 +41,106 @@ st.markdown("""
 # ==============================
 # HEADER
 # ==============================
-st.markdown('<div class="big-title">🎙️ Speech Emotion Recognition</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-text">Upload audio and detect human emotions using AI</div>', unsafe_allow_html=True)
+st.markdown('<p class="big-title">🎙️ Speech Emotion Recognition AI</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Deep Learning powered emotion detection from audio</p>', unsafe_allow_html=True)
 
-st.divider()
+st.markdown("---")
 
-st.markdown("🧠 **Model:** Random Forest (MFCC + Chroma + Mel Features)")
+# ==============================
+# MODEL SELECTOR 🔥
+# ==============================
+model_choice = st.selectbox(
+    "🧠 Select Model",
+    ["CNN (Deep Learning)", "Random Forest (Baseline)"]
+)
 
 # ==============================
 # FILE UPLOAD
 # ==============================
 uploaded_file = st.file_uploader("📂 Upload WAV file", type=["wav"])
 
-# ==============================
-# EMOJI + INFO MAP
-# ==============================
-emoji_map = {
-    "happy": "😊",
-    "sad": "😢",
-    "angry": "😠",
-    "neutral": "😐"
-}
-
-emotion_info = {
-    "happy": "Positive emotion detected 😊",
-    "sad": "Low mood detected 😢",
-    "angry": "High intensity emotion detected 😠",
-    "neutral": "Stable emotional state 😐"
-}
-
-# ==============================
-# PREDICTION
-# ==============================
-if uploaded_file:
+if uploaded_file is not None:
     st.audio(uploaded_file, format="audio/wav")
 
-    if st.button("🚀 Predict Emotion"):
-        try:
-            start = time.time()
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(uploaded_file.read())
+            temp_path = tmp.name
 
-            # Save temp file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-                temp_file.write(uploaded_file.getvalue())
-                temp_path = temp_file.name
+        with st.spinner("🔍 Processing audio..."):
 
-            with st.spinner("🔍 Analyzing audio..."):
+            if model_choice == "CNN (Deep Learning)":
                 result = predict_emotion(temp_path)
-
-            end = time.time()
-            latency = round(end - start, 2)
-
-            if "emotion" in result:
-                emotion = result["emotion"]
-                confidence = result["confidence"]
-
-                emoji = emoji_map.get(emotion.lower(), "🎭")
-
-                # RESULT BOX
-                st.markdown(
-                    f"""
-                    <div class="result-box">
-                        {emoji} Predicted Emotion: {emotion.capitalize()} ({confidence}%)
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                # CONFIDENCE
-                st.markdown(f"**Confidence Score:** {confidence}%")
-                st.progress(int(confidence))
-
-                # INSIGHT
-                st.info(emotion_info.get(emotion.lower(), "Emotion detected"))
-
-                # LATENCY
-                st.info(f"⏱️ Processing Time: {latency} sec")
-
             else:
-                st.error("Prediction failed")
+                from src.predict_ml import predict_emotion_ml
+                result = predict_emotion_ml(temp_path)
 
-        except Exception as e:
-            st.error(f"⚠️ Error: {e}")
+        # ==============================
+        # RESULT DISPLAY
+        # ==============================
+        if isinstance(result, tuple):
+            emotion, confidence, probabilities, top_preds = result
+
+            st.success(f"🎯 Predicted Emotion: {emotion}")
+            st.info(f"📊 Confidence: {confidence:.2f}")
+
+            # Top predictions
+            st.subheader("🔝 Top Predictions")
+            for label, prob in top_preds:
+                st.write(f"{label}: {prob:.2f}")
+
+            # ==============================
+            # PROBABILITY GRAPH
+            # ==============================
+            st.subheader("📊 Prediction Distribution")
+
+            labels = ["happy", "sad", "angry", "neutral"]
+
+            fig, ax = plt.subplots()
+            ax.bar(labels, probabilities)
+            ax.set_ylim(0, 1)
+
+            st.pyplot(fig)
+
+            # ==============================
+            # AUDIO WAVEFORM
+            # ==============================
+            st.subheader("🎧 Audio Waveform")
+
+            audio, sr = librosa.load(temp_path)
+
+            fig2, ax2 = plt.subplots()
+            librosa.display.waveshow(audio, sr=sr, ax=ax2)
+
+            st.pyplot(fig2)
+
+        else:
+            st.error(result)
+
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+
+    finally:
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 # ==============================
-# FOOTER
+# FOOTER INFO
 # ==============================
 st.markdown("---")
-st.caption("💡 Tip: Try different tones or speakers for varied results")
-st.caption("Built with ❤️ using Machine Learning and Streamlit")
+
+st.subheader("🧠 Model Comparison")
+st.write("""
+- Random Forest → Baseline (~74% accuracy)  
+- CNN → Improved performance + generalization  
+""")
+
+st.subheader("⚙️ System Info")
+st.write("""
+- Input: Audio (.wav)  
+- Feature: Mel Spectrogram  
+- Model: CNN + ML  
+- Output: Emotion + Confidence + Distribution  
+""")
+
+st.caption("Built with ❤️ using Deep Learning + Streamlit")

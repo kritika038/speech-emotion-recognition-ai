@@ -1,7 +1,11 @@
+.venv/
 venv/
 venv310/
+
+data/
+models/
+
 __pycache__/
 *.pyc
-models/
-data/
-outputs/
+
+.DS_Store
